@@ -10,6 +10,7 @@ to a 15-entry palette, and whether the result lands on the 8px tile grid.
     ./spritecheck.py peppino_idle_00.png            # target 48px tall cel
     ./spritecheck.py frame.png --target-h 64
     ./spritecheck.py --demo                         # synthetic frame, no assets needed
+    ./spritecheck.py sheet.png --sheet              # segment a sheet, per-cel stats
 
 The verdict is deliberately mechanical: it measures the source and does the
 arithmetic. It does not know whether the result looks good -- but if the
@@ -118,6 +119,100 @@ def palette_loss(img, colours=GBA_PALETTE_COLOURS):
         err_q += sum(abs(s[i] - d[i]) for i in range(3)) / 3
         err_g += sum(abs(s[i] - snap_gba(d[i])) for i in range(3)) / 3
     return (err_q / n if n else 0, err_g / n if n else 0, n)
+
+
+def segment_sheet(path, min_px=30, gap=2):
+    """Segment a sprite sheet into discrete cels and report GBA fit.
+
+    Useful for sizing up an existing sheet -- a fan demake, or an artist's
+    test pass -- against the 4bpp / 8px-tile / 15-colour reality. `gap`
+    tolerates antialiased limbs so one character does not split into pieces;
+    raise it for loose art, lower it if adjacent cels are merging.
+    """
+    from collections import deque
+
+    im = Image.open(path).convert("RGBA")
+    im.load()
+    w, h = im.size
+    px = pixels(im)
+    corner = px[0]
+
+    def solid(i):
+        r, g, b, a = px[i]
+        if a < 40:
+            return False
+        if corner[3] > 40 and (r, g, b, a) == corner:
+            return False
+        return True
+
+    seen = bytearray(w * h)
+    boxes = []
+    for start in range(w * h):
+        if seen[start] or not solid(start):
+            continue
+        q = deque([start])
+        seen[start] = 1
+        x0 = x1 = start % w
+        y0 = y1 = start // w
+        n = 0
+        while q:
+            i = q.popleft()
+            n += 1
+            x, y = i % w, i // w
+            x0, x1 = min(x0, x), max(x1, x)
+            y0, y1 = min(y0, y), max(y1, y)
+            for dy in range(-gap, gap + 1):
+                for dx in range(-gap, gap + 1):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h:
+                        j = ny * w + nx
+                        if not seen[j] and solid(j):
+                            seen[j] = 1
+                            q.append(j)
+        if n >= min_px:
+            boxes.append((x1 - x0 + 1, y1 - y0 + 1))
+
+    cols = {}
+    for r, g, b, a in px:
+        if a > 128 and not (corner[3] > 40 and (r, g, b, a) == corner):
+            cols[(r, g, b)] = cols.get((r, g, b), 0) + 1
+
+    print(f"\nsheet             {path}")
+    print(f"                  {w} x {h} px")
+    print(f"cels found        {len(boxes)}   (min {min_px} px, {gap}px gap tolerance)")
+
+    if not boxes:
+        print("  nothing segmented -- try --gap or --min-px")
+        return 0
+
+    hs = sorted(b[1] for b in boxes)
+    med = hs[len(hs) // 2]
+    print(f"cel height        median {med} px, range {hs[0]}-{hs[-1]} px")
+    print("                  (very tall outliers are usually a merged row --"
+          " trust the median)")
+
+    tiles = [(-(-bw // TILE)) * (-(-bh // TILE)) for bw, bh in boxes]
+    tsorted = sorted(tiles)
+    tmed = tsorted[len(tsorted) // 2]
+    print(f"median cel cost   {tmed} tiles = {tmed * 32} bytes at 4bpp")
+
+    print(f"\ncolour            {len(cols)} unique opaque colours")
+    if len(cols) <= GBA_PALETTE_COLOURS:
+        print(f"                  fits one GBA 4bpp palette, "
+              f"{GBA_PALETTE_COLOURS - len(cols)} entries spare")
+    else:
+        print(f"                  exceeds one 4bpp palette by "
+              f"{len(cols) - GBA_PALETTE_COLOURS} -- split or reduce")
+
+    print("\nverdict")
+    if med < 40:
+        print(f"  Cels are {med}px tall -- Game Boy scale rather than GBA scale.")
+        print("  Usable as-is on a 240x160 screen, but the character will read")
+        print("  small; scaling up means redrawing at the larger size and")
+        print("  spending the spare palette entries, which is additive work.")
+    else:
+        print(f"  Cels are {med}px tall -- already in GBA range for a 160px screen.")
+    return 0
 
 
 def make_demo(path):
@@ -237,6 +332,13 @@ def main(argv=None):
                     help="target cel height in px (default 48)")
     ap.add_argument("--demo", action="store_true",
                     help="generate and analyse a synthetic cartoon cel")
+    ap.add_argument("--sheet", action="store_true",
+                    help="treat the image as a multi-cel sprite sheet: segment "
+                         "it and report per-cel size and palette fit")
+    ap.add_argument("--gap", type=int, default=2,
+                    help="pixel gap tolerated when grouping a cel (default 2)")
+    ap.add_argument("--min-px", type=int, default=30,
+                    help="ignore blobs smaller than this many px (default 30)")
     ap.add_argument("--ink-threshold", type=int, default=70,
                     help="luminance below which a pixel counts as linework "
                          "rather than shading (default 70)")
@@ -249,6 +351,8 @@ def main(argv=None):
         return report(path, a.target_h, a.ink_threshold)
     if not a.image:
         ap.error("give an image, or use --demo")
+    if a.sheet:
+        return segment_sheet(a.image, a.min_px, a.gap)
     return report(a.image, a.target_h, a.ink_threshold)
 
 

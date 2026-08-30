@@ -176,6 +176,65 @@ that does not. Given the above, this costs the project close to nothing: the
 cels have to be redrawn regardless, so the redrawn art is original by
 construction.
 
+### Prior art: the redraw has partly been done already
+
+Worth correcting an impression the section above could leave. The redraw is not
+hypothetical work that nobody has attempted — there is an active community
+doing exactly this, and their output is measurable.
+
+The Spriters Resource's [Pizza Tower Customs][ptc] section carries a cluster of
+handheld and 8/16-bit demake sheets. In the Wario lineage specifically:
+*Peppino (Wario Land 1-Style)*, *Peppino (Wario Land 3-style)*, *Peppino (Game
+Boy-Style)*, and *Pizza Box Goblin (Wario Blast-Style)*. Alongside them sit
+NES-era Kirby's Adventure-style sheets for Peppino, Fake Peppino, Pepperman,
+The Noise, The Vigilante and Pizzaface/Pizzahead, plus SMB1/2/3, Super Mario
+World and Super Mario Maker takes.
+
+Measured with `spritecheck.py --sheet`:
+
+| Sheet | Cels | Median cel | Colours | One 4bpp palette? |
+|---|---|---|---|---|
+| Peppino (Wario Land 1-Style) | 49 | 31 px | 7 | yes, 8 spare |
+| Peppino (Wario Land 3-style) | 48 | 26 px | 10 | yes, 5 spare |
+| Peppino (Game Boy-Style) | 48 | 16 px | 7 | yes, 8 spare |
+| Pizza Box Goblin (Wario Blast-Style) | 4 | 25 px | 4 | yes, 11 spare |
+
+Four things follow, and they cut in different directions.
+
+**The redraw is proven tractable, in this exact aesthetic lineage.** Peppino has
+been successfully reduced to a 26-31px Wario-styled cel by people who chose to
+do it for fun. That is the strongest available evidence that the art problem is
+work rather than risk.
+
+**But these are Game Boy scale, not GBA scale.** They are drawn for 160x144 with
+a 4-shade palette. On a 240x160 screen a 31px Peppino reads small — around 19%
+of screen height against Pizza Tower's ~25%. Usable, and arguably a *help* given
+the sightline problem above, but not the 48-64px cel the budgets in this
+document assume.
+
+**They under-use the hardware.** Seven to ten colours where GBA 4bpp allows 15.
+Moving GB art to GBA means adding depth rather than removing it, which is the
+easy direction — additive work on top of a finished silhouette.
+
+**Frame count is the real gap.** These sheets carry roughly 48 cels: a basic
+moveset. A full Peppino needs mach tiers, wall running, grab-and-throw, taunts,
+Pizza Time panic and transformations — the several-hundred-frame figure the
+budgets model. What exists is on the order of 5-10% of a shipping moveset.
+
+Two practical notes. These sheets are fan works by individual named artists, so
+using any of them needs that artist's permission — which is a conversation, not
+a blocker, and the same conversation that might recruit them. And the itch.io
+project *Pizza Tower On The GBA* (MineKen713, reuploaded by Zee_Scoot) is a
+GBA-*styled* GameMaker game for PC, not a GBA build — per its own comments
+thread it does not run on the hardware. Useful as a visual target; not a port to
+build on.
+
+**This changes the resourcing question from "can it be drawn?" to "who will draw
+the other 90%?"** — which is a better question to be stuck on, and points at a
+community that has already self-selected for wanting to do it.
+
+[ptc]: https://www.spriters-resource.com/custom_edited/pizzatowercustoms/
+
 ### The escape sequence: this is the wall
 
 Pizza Time with eight chasers, sixteen debris pieces, dust, HUD, and four
