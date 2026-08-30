@@ -43,7 +43,8 @@ sprites, music, or level data cannot be redistributed in any build, on either
 route. What is normal and defensible in this space: original art in the game's
 style, original music, and — for a ROM hack — distributing an IPS/UPS/BPS
 patch rather than a built ROM. That constraint costs nothing technically,
-because §4 shows the art has to be redrawn from scratch anyway.
+because §4 shows the art has to be redrawn from scratch anyway --
+including if you rip every frame first.
 
 ---
 
@@ -111,6 +112,69 @@ This is the finding that makes the project viable: you do not need to fit the
 animation set in VRAM, you need to fit *two cels* per animating actor, and the
 cart is nowhere near full. Frame count is an art-labour problem, not a
 hardware problem.
+
+### Can we skip the redraw and just rip the assets?
+
+No, and the reason is worth being precise about, because the appeal of ripping
+is that it saves the art labour — and it doesn't.
+
+Pizza Tower renders at 960x540. Its cels are drawn for that canvas, and a GBA
+Peppino is a 48-64px cel: roughly a **3.5-4x linear downscale**. Cartoon art of
+this kind carries its readability in a line-weight hierarchy — a heavy outline
+holding the silhouette, lighter interior lines, fine detail on top. Divide all
+of it by 3.75 and most of that hierarchy lands below one pixel.
+
+[`spritecheck.py`](./spritecheck.py) measures this on any frame you point it at.
+On a synthetic cel built at realistic source scale with deliberate 4px/2px/1px
+weights:
+
+```
+target cel        48 x 48 px   (downscale 3.75x linear, 14.1x area)
+    stroke width   source px   at target   survives
+            1 px       1,401      0.27px       LOST
+            3 px       1,144      0.80px       LOST
+            5 px         302      1.33px        yes
+
+  88% of the drawing's ink is drawn at a weight that falls below 1px
+  at this scale and cannot survive the downscale.
+
+colour            116 unique opaque colours -> 15 palette entries (8x reduction)
+                  mean error 2.9/255 after median-cut
+```
+
+Two things worth noting in that output. The **palette reduction is survivable** —
+median-cut handles a shading ramp better than intuition suggests, and 15 colours
+is less brutal than it sounds. It is the **line weight collapse** that is fatal,
+and no filter fixes it: what a human pixel artist does at 48px is re-draw the
+silhouette with new, deliberate weights, not shrink the old ones. That is a
+redraw by definition.
+
+Run it against real ripped frames before taking this on faith — that is what the
+tool is for, and if it reports something different on actual art, this section
+is wrong and should be rewritten.
+
+**What ripped assets are genuinely worth having**, and where the time saving
+actually is:
+
+- **Reference underlay.** Redrawing at 48px with the original at hand is much
+  faster than redrawing from imagination. This is the real win.
+- **Animation timing.** Frame counts and per-frame hold durations are directly
+  reusable and are a large fraction of what makes the movement read correctly.
+- **Palette study.** Which 15 colours a character actually needs, sampled from
+  the source rather than guessed.
+- **Level metrics.** Room dimensions, platform spacing, and enemy placement in
+  world units, which inform the geometry rebuild in the screen-size problem
+  above.
+
+On distribution: ripping for reference and private use is ordinary practice.
+Shipping a build containing those assets is copyright infringement, and it is
+the specific thing that gets fan projects taken down. Tour de Pizza has no
+published policy either way that I could find, and a large mod scene exists on
+GameBanana and itch.io — but those are mods that require you to already own the
+game, which is a materially different legal position from a standalone `.gba`
+that does not. Given the above, this costs the project close to nothing: the
+cels have to be redrawn regardless, so the redrawn art is original by
+construction.
 
 ### The escape sequence: this is the wall
 
